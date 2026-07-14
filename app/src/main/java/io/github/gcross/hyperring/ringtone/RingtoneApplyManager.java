@@ -7,6 +7,11 @@ import android.provider.Settings;
 
 public final class RingtoneApplyManager {
     public RingtoneApplyResult apply(Context context, Uri ringtoneUri, SimTarget target) {
+        return apply(context, ringtoneUri, null, target);
+    }
+
+    public RingtoneApplyResult apply(Context context, Uri ringtoneUri, String ringtonePath,
+            SimTarget target) {
         if (target == SimTarget.IMPORT_ONLY) {
             return RingtoneApplyResult.success("已导入系统铃声库，未修改当前铃声。");
         }
@@ -23,7 +28,8 @@ public final class RingtoneApplyManager {
             return official;
         }
 
-        RingtoneApplyResult hyperOs = HyperOsRingtoneSetter.apply(context, ringtoneUri, target);
+        RingtoneApplyResult hyperOs = HyperOsRingtoneSetter.apply(context, ringtoneUri,
+                ringtonePath, target);
         if (hyperOs.getStatus() == RingtoneApplyResult.Status.SUCCESS) {
             return hyperOs;
         }

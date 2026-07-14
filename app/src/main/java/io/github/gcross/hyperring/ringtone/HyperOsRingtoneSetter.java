@@ -13,11 +13,15 @@ final class HyperOsRingtoneSetter {
     private static final String DEFAULT_SIM1_KEY = "ringtone_sound_slot_1";
     private static final String DEFAULT_SIM2_KEY = "ringtone_sound_slot_2";
     private static final String UNIFORM_KEY = "ringtone_sound_use_uniform";
+    private static final String SIM1_DISPLAY_KEY = "more_ringtone_value_call64";
+    private static final String SIM1_LEGACY_DISPLAY_KEY = "more_ringtone_value_call1";
+    private static final String SIM2_DISPLAY_KEY = "more_ringtone_value_call128";
 
     private HyperOsRingtoneSetter() {
     }
 
-    static RingtoneApplyResult apply(Context context, Uri ringtoneUri, SimTarget target) {
+    static RingtoneApplyResult apply(Context context, Uri ringtoneUri, String ringtonePath,
+            SimTarget target) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String sim1Key = resolveSim1Key(context, prefs);
         String sim2Key = resolveSim2Key(context, prefs);
@@ -36,9 +40,12 @@ final class HyperOsRingtoneSetter {
                 Settings.System.putString(context.getContentResolver(), sim1Key, value);
                 Settings.System.putString(context.getContentResolver(), Settings.System.RINGTONE,
                         value);
+                writeDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath);
+                writeDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath);
             }
             if (target == SimTarget.SIM_2 || target == SimTarget.BOTH) {
                 Settings.System.putString(context.getContentResolver(), sim2Key, value);
+                writeDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath);
             }
             return RingtoneApplyResult.success("已写入已校准的 HyperOS 双卡铃声 key。");
         } catch (Exception e) {
@@ -82,6 +89,12 @@ final class HyperOsRingtoneSetter {
         String brand = Build.BRAND == null ? "" : Build.BRAND.toLowerCase();
         return manufacturer.contains("xiaomi") || brand.contains("xiaomi")
                 || brand.contains("redmi") || brand.contains("poco");
+    }
+
+    private static void writeDisplayPath(Context context, String key, String ringtonePath) {
+        if (!isBlank(ringtonePath)) {
+            Settings.System.putString(context.getContentResolver(), key, ringtonePath);
+        }
     }
 
     private static String emptyLabel(String value) {

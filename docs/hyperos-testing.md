@@ -24,6 +24,8 @@
 SIM 1: ringtone_sound_slot_1
 SIM 2: ringtone_sound_slot_2
 双卡分离开关: ringtone_sound_use_uniform = 0
+SIM 1 设置页显示路径: more_ringtone_value_call1 / more_ringtone_value_call64
+SIM 2 设置页显示路径: more_ringtone_value_call128
 ```
 
 当前实测结果：

@@ -55,7 +55,8 @@ public final class MediaStoreRingtoneWriter {
             resolver.update(outputUri, publish, null, null);
         }
 
-        return new ImportedRingtone(outputUri, displayName, bytesWritten);
+        return new ImportedRingtone(outputUri, displayName, resolveExpectedPath(displayName),
+                bytesWritten);
     }
 
     private long copy(ContentResolver resolver, Uri inputUri, Uri outputUri) throws IOException {
@@ -118,5 +119,10 @@ public final class MediaStoreRingtoneWriter {
             return displayName.substring(0, dot);
         }
         return displayName;
+    }
+
+    private String resolveExpectedPath(String displayName) {
+        return Environment.getExternalStorageDirectory().getAbsolutePath()
+                + "/" + Environment.DIRECTORY_RINGTONES + "/" + displayName;
     }
 }

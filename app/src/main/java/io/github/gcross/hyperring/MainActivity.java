@@ -224,7 +224,8 @@ public class MainActivity extends Activity {
                 ImportedRingtone imported = ringtoneWriter.importAsRingtone(this, selectedAudioUri);
                 lastImported = imported;
                 SimTarget target = currentTarget();
-                RingtoneApplyResult result = applyManager.apply(this, imported.getUri(), target);
+                RingtoneApplyResult result = applyManager.apply(this, imported.getUri(),
+                        imported.getAbsolutePath(), target);
                 runOnUiThread(() -> {
                     importedText.setText(imported.getDisplayName() + " / "
                             + formatBytes(imported.getBytesWritten()));
