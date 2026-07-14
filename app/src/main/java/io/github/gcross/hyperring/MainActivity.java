@@ -17,6 +17,7 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -91,7 +92,16 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(18), dp(18), dp(24));
+        int horizontalPadding = dp(18);
+        int topPadding = dp(18);
+        int bottomPadding = dp(24);
+        root.setPadding(horizontalPadding, topPadding, horizontalPadding, bottomPadding);
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            view.setPadding(horizontalPadding, topPadding + insets.getSystemWindowInsetTop(),
+                    horizontalPadding, bottomPadding + insets.getSystemWindowInsetBottom());
+            return insets;
+        });
+        root.post(root::requestApplyInsets);
         scrollView.addView(root, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
