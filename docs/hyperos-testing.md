@@ -26,6 +26,12 @@ SIM 2: ringtone_sound_slot_2
 双卡分离开关: ringtone_sound_use_uniform = 0
 ```
 
+当前实测结果：
+
+```text
+Xiaomi 25098PN5AC / Android SDK 36: SIM 2 铃声导入并应用成功
+```
+
 HyperRing 会在小米、Redmi、POCO 设备上默认尝试这组 key。下面的手动校准流程用于处理不同 HyperOS 版本或不同机型不兼容的情况。
 
 1. 点击 `刷新诊断`，保存当前输出。
