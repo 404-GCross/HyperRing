@@ -237,7 +237,7 @@ public class MainActivity extends Activity {
                 ImportedRingtone imported = ringtoneWriter.importAsRingtone(this, selectedAudioUri);
                 lastImported = imported;
                 SimTarget target = currentTarget();
-                RingtoneApplyResult result = applyManager.apply(this, imported.getUri(),
+                RingtoneApplyResult result = applyManager.apply(this, imported.getCanonicalUri(),
                         imported.getAbsolutePath(), target);
                 runOnUiThread(() -> {
                     dismissProgressDialog();

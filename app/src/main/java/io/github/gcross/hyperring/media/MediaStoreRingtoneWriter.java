@@ -35,7 +35,8 @@ public final class MediaStoreRingtoneWriter {
         values.put(MediaStore.Audio.Media.IS_MUSIC, false);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_RINGTONES);
+            values.put(MediaStore.MediaColumns.RELATIVE_PATH,
+                    Environment.DIRECTORY_RINGTONES + "/ThemeManager");
             values.put(MediaStore.MediaColumns.IS_PENDING, 1);
         }
 
@@ -59,7 +60,9 @@ public final class MediaStoreRingtoneWriter {
                 MediaStore.MediaColumns.DISPLAY_NAME, displayName);
         String actualPath = resolveOutputColumn(resolver, outputUri, MediaStore.MediaColumns.DATA,
                 resolveExpectedPath(actualDisplayName));
-        return new ImportedRingtone(outputUri, actualDisplayName, actualPath, bytesWritten);
+        Uri canonicalUri = canonicalize(resolver, outputUri);
+        return new ImportedRingtone(outputUri, canonicalUri, actualDisplayName, actualPath,
+                bytesWritten);
     }
 
     private long copy(ContentResolver resolver, Uri inputUri, Uri outputUri) throws IOException {
@@ -126,7 +129,7 @@ public final class MediaStoreRingtoneWriter {
 
     private String resolveExpectedPath(String displayName) {
         return Environment.getExternalStorageDirectory().getAbsolutePath()
-                + "/" + Environment.DIRECTORY_RINGTONES + "/" + displayName;
+                + "/" + Environment.DIRECTORY_RINGTONES + "/ThemeManager/" + displayName;
     }
 
     private String resolveOutputColumn(ContentResolver resolver, Uri outputUri, String column,
@@ -144,5 +147,14 @@ public final class MediaStoreRingtoneWriter {
         } catch (Exception ignored) {
         }
         return fallback;
+    }
+
+    private Uri canonicalize(ContentResolver resolver, Uri outputUri) {
+        try {
+            Uri canonicalUri = resolver.canonicalize(outputUri);
+            return canonicalUri == null ? outputUri : canonicalUri;
+        } catch (Exception ignored) {
+            return outputUri;
+        }
     }
 }
