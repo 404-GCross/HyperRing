@@ -35,10 +35,13 @@ import io.github.gcross.hyperring.ringtone.RingtoneApplyManager;
 import io.github.gcross.hyperring.ringtone.RingtoneApplyResult;
 import io.github.gcross.hyperring.ringtone.SettingsFallbackLauncher;
 import io.github.gcross.hyperring.ringtone.SimTarget;
+import io.github.gcross.hyperring.shizuku.ShizukuShell;
+import rikka.shizuku.Shizuku;
 
 public class MainActivity extends Activity {
     private static final int REQUEST_PICK_AUDIO = 1001;
     private static final int REQUEST_PERMISSIONS = 1002;
+    private static final int REQUEST_SHIZUKU_PERMISSION = 1003;
 
     private Uri selectedAudioUri;
     private ImportedRingtone lastImported;
@@ -46,20 +49,49 @@ public class MainActivity extends Activity {
     private TextView importedText;
     private TextView statusText;
     private TextView diagnosticsText;
+    private TextView shizukuText;
     private RadioGroup targetGroup;
     private EditText sim1KeyText;
     private EditText sim2KeyText;
     private AlertDialog progressDialog;
+    private SimTarget lastTarget;
 
     private final MediaStoreRingtoneWriter ringtoneWriter = new MediaStoreRingtoneWriter();
     private final RingtoneApplyManager applyManager = new RingtoneApplyManager();
+    private final Shizuku.OnBinderReceivedListener shizukuBinderReceivedListener =
+            this::onShizukuStateChanged;
+    private final Shizuku.OnBinderDeadListener shizukuBinderDeadListener =
+            this::onShizukuStateChanged;
+    private final Shizuku.OnRequestPermissionResultListener shizukuPermissionListener =
+            (requestCode, grantResult) -> {
+                if (requestCode != REQUEST_SHIZUKU_PERMISSION) {
+                    return;
+                }
+                runOnUiThread(() -> {
+                    refreshShizukuState();
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        statusText.setText("Shizuku 已授权，正在重新应用...");
+                        retryLastApply();
+                    } else {
+                        showResultDialog("Shizuku 未授权", "未获得 Shizuku 授权。");
+                    }
+                });
+            };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(buildContentView());
+        registerShizukuCallbacks();
         requestRuntimePermissions();
+        refreshShizukuState();
         refreshDiagnostics();
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterShizukuCallbacks();
+        super.onDestroy();
     }
 
     @Override
@@ -123,6 +155,7 @@ public class MainActivity extends Activity {
 
         root.addView(buildAudioCard());
         root.addView(buildApplyCard());
+        root.addView(buildShizukuCard());
         root.addView(buildHyperOsCard());
         root.addView(buildStatusCard());
         root.addView(buildDiagnosticsCard());
@@ -163,13 +196,22 @@ public class MainActivity extends Activity {
         applyButton.setOnClickListener(v -> importAndApply());
         card.addView(applyButton);
 
-        Button permissionButton = secondaryButton("授权修改系统设置");
-        permissionButton.setOnClickListener(v -> SettingsFallbackLauncher.openWriteSettings(this));
-        card.addView(permissionButton);
-
         Button soundSettingsButton = secondaryButton("打开系统声音设置");
         soundSettingsButton.setOnClickListener(v -> SettingsFallbackLauncher.openSoundSettings(this));
         card.addView(soundSettingsButton);
+        return card;
+    }
+
+    private View buildShizukuCard() {
+        LinearLayout card = card();
+        card.addView(sectionTitle("Shizuku"));
+
+        shizukuText = bodyText("未连接");
+        card.addView(shizukuText);
+
+        Button requestButton = primaryButton("请求 Shizuku 授权");
+        requestButton.setOnClickListener(v -> requestShizukuPermission());
+        card.addView(requestButton);
         return card;
     }
 
@@ -232,25 +274,13 @@ public class MainActivity extends Activity {
         }
         statusText.setText("正在导入...");
         showProgressDialog();
+        SimTarget target = currentTarget();
+        lastTarget = target;
         new Thread(() -> {
             try {
                 ImportedRingtone imported = ringtoneWriter.importAsRingtone(this, selectedAudioUri);
                 lastImported = imported;
-                SimTarget target = currentTarget();
-                RingtoneApplyResult result = applyManager.apply(this, imported.getCanonicalUri(),
-                        imported.getAbsolutePath(), target);
-                runOnUiThread(() -> {
-                    dismissProgressDialog();
-                    importedText.setText(imported.getDisplayName() + " / "
-                            + formatBytes(imported.getBytesWritten()));
-                    statusText.setText(result.getMessage());
-                    refreshDiagnostics();
-                    if (result.getStatus() == RingtoneApplyResult.Status.NEED_WRITE_SETTINGS_PERMISSION) {
-                        showWriteSettingsDialog(result.getMessage());
-                    } else {
-                        showResultDialog("处理完成", result.getMessage());
-                    }
-                });
+                applyImportedRingtone(imported, target);
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     dismissProgressDialog();
@@ -260,6 +290,37 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private void applyImportedRingtone(ImportedRingtone imported, SimTarget target) {
+        new Thread(() -> {
+            RingtoneApplyResult result = applyManager.apply(this, imported.getCanonicalUri(),
+                    imported.getAbsolutePath(), target);
+            runOnUiThread(() -> {
+                dismissProgressDialog();
+                importedText.setText(imported.getDisplayName() + " / "
+                        + formatBytes(imported.getBytesWritten()));
+                statusText.setText(result.getMessage());
+                refreshDiagnostics();
+                if (result.getStatus() == RingtoneApplyResult.Status.NEED_SHIZUKU_PERMISSION) {
+                    showShizukuDialog(result.getMessage());
+                } else {
+                    String title = result.getStatus() == RingtoneApplyResult.Status.SUCCESS
+                            ? "处理完成" : "处理失败";
+                    showResultDialog(title, result.getMessage());
+                }
+            });
+        }).start();
+    }
+
+    private void retryLastApply() {
+        if (lastImported == null || lastTarget == null) {
+            statusText.setText("没有可重试的导入项。");
+            return;
+        }
+        statusText.setText("正在重试应用...");
+        showProgressDialog();
+        applyImportedRingtone(lastImported, lastTarget);
     }
 
     private void showProgressDialog() {
@@ -287,14 +348,53 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    private void showWriteSettingsDialog(String message) {
+    private void showShizukuDialog(String message) {
         new AlertDialog.Builder(this)
-                .setTitle("需要授权")
-                .setMessage(message)
-                .setPositiveButton("去授权",
-                        (dialog, which) -> SettingsFallbackLauncher.openWriteSettings(this))
+                .setTitle("需要 Shizuku")
+                .setMessage(message + "\n\n" + ShizukuShell.describeStatus())
+                .setPositiveButton("请求授权",
+                        (dialog, which) -> requestShizukuPermission())
                 .setNegativeButton("稍后", null)
                 .show();
+    }
+
+    private void requestShizukuPermission() {
+        if (!ShizukuShell.isConnected()) {
+            showResultDialog("Shizuku 未连接", "请先在设备上启动 Shizuku，然后再请求授权。");
+            return;
+        }
+        if (ShizukuShell.isAuthorized()) {
+            showResultDialog("Shizuku 已授权", "当前已经获得 Shizuku 授权。");
+            return;
+        }
+        try {
+            Shizuku.requestPermission(REQUEST_SHIZUKU_PERMISSION);
+        } catch (Exception e) {
+            showResultDialog("请求失败", "无法请求 Shizuku 授权：" + e.getMessage());
+        }
+    }
+
+    private void registerShizukuCallbacks() {
+        Shizuku.addBinderReceivedListenerSticky(shizukuBinderReceivedListener);
+        Shizuku.addBinderDeadListener(shizukuBinderDeadListener);
+        Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
+    }
+
+    private void unregisterShizukuCallbacks() {
+        Shizuku.removeBinderReceivedListener(shizukuBinderReceivedListener);
+        Shizuku.removeBinderDeadListener(shizukuBinderDeadListener);
+        Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
+    }
+
+    private void onShizukuStateChanged() {
+        refreshShizukuState();
+        refreshDiagnostics();
+    }
+
+    private void refreshShizukuState() {
+        if (shizukuText != null) {
+            shizukuText.setText(ShizukuShell.describeStatus());
+        }
     }
 
     private SimTarget currentTarget() {

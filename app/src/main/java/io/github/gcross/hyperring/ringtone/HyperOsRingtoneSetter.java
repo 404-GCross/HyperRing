@@ -4,7 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
-import android.provider.Settings;
+
+import io.github.gcross.hyperring.shizuku.ShizukuShell;
 
 final class HyperOsRingtoneSetter {
     private static final String PREFS = "hyperos_ringtone_keys";
@@ -13,6 +14,7 @@ final class HyperOsRingtoneSetter {
     private static final String DEFAULT_SIM1_KEY = "ringtone_sound_slot_1";
     private static final String DEFAULT_SIM2_KEY = "ringtone_sound_slot_2";
     private static final String UNIFORM_KEY = "ringtone_sound_use_uniform";
+    private static final String SYSTEM_RINGTONE_KEY = "ringtone";
     private static final String SIM1_DISPLAY_KEY = "more_ringtone_value_call64";
     private static final String SIM1_LEGACY_DISPLAY_KEY = "more_ringtone_value_call1";
     private static final String SIM2_DISPLAY_KEY = "more_ringtone_value_call128";
@@ -42,7 +44,7 @@ final class HyperOsRingtoneSetter {
 
         if (sim1Required) {
             safePutString(context, sim1Key, value, report, true);
-            safePutString(context, Settings.System.RINGTONE, value, report, false);
+            safePutString(context, SYSTEM_RINGTONE_KEY, value, report, false);
             safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
             safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
         }
@@ -117,12 +119,13 @@ final class HyperOsRingtoneSetter {
     private static void safePutString(Context context, String key, String value, WriteReport report,
             boolean required) {
         try {
-            boolean ok = Settings.System.putString(context.getContentResolver(), key, value);
+            ShizukuShell.CommandResult result = ShizukuShell.putSystemString(key, value);
+            boolean ok = result.isSuccess();
             if (required && ok) {
                 report.requiredSuccesses++;
             }
             if (!ok) {
-                report.warn(key, "系统返回 false");
+                report.warn(key, result.errorMessage());
             }
         } catch (Exception e) {
             report.warn(key, e.getMessage());
@@ -132,12 +135,13 @@ final class HyperOsRingtoneSetter {
     private static void safePutInt(Context context, String key, int value, WriteReport report,
             boolean required) {
         try {
-            boolean ok = Settings.System.putInt(context.getContentResolver(), key, value);
+            ShizukuShell.CommandResult result = ShizukuShell.putSystemInt(key, value);
+            boolean ok = result.isSuccess();
             if (required && ok) {
                 report.requiredSuccesses++;
             }
             if (!ok) {
-                report.warn(key, "系统返回 false");
+                report.warn(key, result.errorMessage());
             }
         } catch (Exception e) {
             report.warn(key, e.getMessage());

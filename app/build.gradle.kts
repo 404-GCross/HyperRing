@@ -29,3 +29,9 @@ android {
         }
     }
 }
+
+dependencies {
+    compileOnly("androidx.annotation:annotation:1.9.1")
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
+}

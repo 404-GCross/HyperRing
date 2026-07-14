@@ -3,7 +3,8 @@ package io.github.gcross.hyperring.ringtone;
 import android.content.Context;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.provider.Settings;
+
+import io.github.gcross.hyperring.shizuku.ShizukuShell;
 
 public final class RingtoneApplyManager {
     public RingtoneApplyResult apply(Context context, Uri ringtoneUri, SimTarget target) {
@@ -15,27 +16,17 @@ public final class RingtoneApplyManager {
         if (target == SimTarget.IMPORT_ONLY) {
             return RingtoneApplyResult.success("已导入系统铃声库，未修改当前铃声。");
         }
-        if (!Settings.System.canWrite(context)) {
-            return RingtoneApplyResult.needSettingsPermission();
-        }
 
         if (target == SimTarget.SYSTEM_DEFAULT) {
             return setSystemDefault(context, ringtoneUri);
         }
 
-        RingtoneApplyResult official = OfficialSimRingtoneSetter.apply(context, ringtoneUri, target);
-        if (official.getStatus() == RingtoneApplyResult.Status.SUCCESS) {
-            return official;
+        RingtoneApplyResult shizukuReady = ShizukuShell.ensureReady(context);
+        if (shizukuReady != null) {
+            return shizukuReady;
         }
 
-        RingtoneApplyResult hyperOs = HyperOsRingtoneSetter.apply(context, ringtoneUri,
-                ringtonePath, target);
-        if (hyperOs.getStatus() == RingtoneApplyResult.Status.SUCCESS) {
-            return hyperOs;
-        }
-
-        return RingtoneApplyResult.unsupported(official.getMessage() + "\n" + hyperOs.getMessage()
-                + "\n已导入铃声库，可跳转系统声音设置手动选择。");
+        return HyperOsRingtoneSetter.apply(context, ringtoneUri, ringtonePath, target);
     }
 
     public void saveHyperOsKeys(Context context, String sim1Key, String sim2Key) {

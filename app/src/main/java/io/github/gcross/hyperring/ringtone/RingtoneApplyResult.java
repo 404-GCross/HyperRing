@@ -4,6 +4,7 @@ public final class RingtoneApplyResult {
     public enum Status {
         SUCCESS,
         NEED_WRITE_SETTINGS_PERMISSION,
+        NEED_SHIZUKU_PERMISSION,
         UNSUPPORTED,
         FAILED
     }
@@ -23,6 +24,10 @@ public final class RingtoneApplyResult {
     public static RingtoneApplyResult needSettingsPermission() {
         return new RingtoneApplyResult(Status.NEED_WRITE_SETTINGS_PERMISSION,
                 "需要允许 HyperRing 修改系统设置，才能应用铃声。");
+    }
+
+    public static RingtoneApplyResult needShizukuPermission(String message) {
+        return new RingtoneApplyResult(Status.NEED_SHIZUKU_PERMISSION, message);
     }
 
     public static RingtoneApplyResult unsupported(String message) {

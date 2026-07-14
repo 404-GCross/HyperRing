@@ -2,7 +2,7 @@
 
 HyperRing 是一个面向 HyperOS 双卡场景的现代 Android 铃声工具。
 
-第一版可构建 MVP 优先打通最关键、风险最高的链路：选择音频、导入系统铃声库，并尝试应用到 SIM 1、SIM 2、双卡或系统默认电话铃声。
+第一版可构建 MVP 优先打通最关键、风险最高的链路：选择音频、导入系统铃声库，并通过 Shizuku 写入 HyperOS 双卡铃声 key。
 
 音频剪辑和波形编辑会在后续版本补上。当前版本先把 HyperOS 双卡铃声设置链路跑通，方便尽早上真机验证。
 
@@ -16,10 +16,15 @@ HyperRing 是一个面向 HyperOS 双卡场景的现代 Android 铃声工具。
   - SIM 1 + SIM 2
   - 系统默认电话铃声
   - 仅导入系统铃声库
-- 通过系统页面请求 `WRITE_SETTINGS` 权限。
-- 在系统支持时，优先尝试 Android 官方的按通话账户设置铃声接口。
-- 支持填写已校准的 HyperOS 私有铃声 key，但不会默认写入未经验证的 key。
-- 提供诊断信息：设备信息、可通话账户、铃声相关系统设置项。
+- 通过 Shizuku 写入 `ringtone_sound_slot_1`、`ringtone_sound_slot_2` 和 Xiaomi 铃声界面显示相关 key。
+- 支持填写已校准的 HyperOS 私有铃声 key。
+- 提供诊断信息：设备信息、Shizuku 状态、可通话账户、铃声相关系统设置项。
+
+## Shizuku
+
+SIM 1 / SIM 2 铃声应用需要设备已安装并启动 Shizuku，且在 Shizuku 中授权 HyperRing。未授权时，应用会在导入后提示请求 Shizuku 授权；授权成功后会自动重试上一次应用操作。
+
+`系统默认电话铃声` 和 `仅导入系统铃声库` 不依赖 Shizuku。
 
 ## 构建
 

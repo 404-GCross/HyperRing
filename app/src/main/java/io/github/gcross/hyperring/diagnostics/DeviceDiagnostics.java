@@ -7,6 +7,7 @@ import android.provider.Settings;
 
 import io.github.gcross.hyperring.ringtone.OfficialSimRingtoneSetter;
 import io.github.gcross.hyperring.ringtone.RingtoneApplyManager;
+import io.github.gcross.hyperring.shizuku.ShizukuShell;
 
 import java.util.List;
 import java.util.Locale;
@@ -36,6 +37,7 @@ public final class DeviceDiagnostics {
         builder.append("Model: ").append(Build.MODEL).append('\n');
         builder.append("SDK: ").append(Build.VERSION.SDK_INT).append('\n');
         builder.append("Can write settings: ").append(Settings.System.canWrite(context)).append("\n\n");
+        builder.append(ShizukuShell.describeStatus()).append("\n\n");
 
         builder.append("Call-capable accounts\n");
         List<String> accounts = OfficialSimRingtoneSetter.describeAccounts(context);
