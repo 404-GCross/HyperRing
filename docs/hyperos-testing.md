@@ -18,6 +18,16 @@
 
 如果 App 提示当前系统没有可用的官方按 SIM 设置接口，或者 SIM1/SIM2 设置后没有实际生效，请使用 `诊断` 区域辅助校准。
 
+已在 Xiaomi `25098PN5AC` / Android SDK 36 诊断中观察到：
+
+```text
+SIM 1: ringtone_sound_slot_1
+SIM 2: ringtone_sound_slot_2
+双卡分离开关: ringtone_sound_use_uniform = 0
+```
+
+HyperRing 会在小米、Redmi、POCO 设备上默认尝试这组 key。下面的手动校准流程用于处理不同 HyperOS 版本或不同机型不兼容的情况。
+
 1. 点击 `刷新诊断`，保存当前输出。
 2. 打开 HyperOS 系统设置，手动修改 SIM 1 铃声。
 3. 回到 HyperRing，再次点击 `刷新诊断`，保存第二份输出。

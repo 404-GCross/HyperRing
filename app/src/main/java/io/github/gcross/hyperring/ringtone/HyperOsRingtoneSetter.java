@@ -3,20 +3,24 @@ package io.github.gcross.hyperring.ringtone;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 
 final class HyperOsRingtoneSetter {
     private static final String PREFS = "hyperos_ringtone_keys";
     private static final String SIM1_KEY = "sim1_key";
     private static final String SIM2_KEY = "sim2_key";
+    private static final String DEFAULT_SIM1_KEY = "ringtone_sound_slot_1";
+    private static final String DEFAULT_SIM2_KEY = "ringtone_sound_slot_2";
+    private static final String UNIFORM_KEY = "ringtone_sound_use_uniform";
 
     private HyperOsRingtoneSetter() {
     }
 
     static RingtoneApplyResult apply(Context context, Uri ringtoneUri, SimTarget target) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        String sim1Key = prefs.getString(SIM1_KEY, "");
-        String sim2Key = prefs.getString(SIM2_KEY, "");
+        String sim1Key = resolveSim1Key(context, prefs);
+        String sim2Key = resolveSim2Key(context, prefs);
 
         if ((target == SimTarget.SIM_1 || target == SimTarget.BOTH) && isBlank(sim1Key)) {
             return RingtoneApplyResult.unsupported("HyperOS SIM1 私有 key 尚未校准。");
@@ -27,8 +31,11 @@ final class HyperOsRingtoneSetter {
 
         String value = ringtoneUri.toString();
         try {
+            Settings.System.putInt(context.getContentResolver(), UNIFORM_KEY, 0);
             if (target == SimTarget.SIM_1 || target == SimTarget.BOTH) {
                 Settings.System.putString(context.getContentResolver(), sim1Key, value);
+                Settings.System.putString(context.getContentResolver(), Settings.System.RINGTONE,
+                        value);
             }
             if (target == SimTarget.SIM_2 || target == SimTarget.BOTH) {
                 Settings.System.putString(context.getContentResolver(), sim2Key, value);
@@ -49,9 +56,32 @@ final class HyperOsRingtoneSetter {
 
     static String describeKeys(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        String sim1Key = prefs.getString(SIM1_KEY, "");
-        String sim2Key = prefs.getString(SIM2_KEY, "");
+        String sim1Key = resolveSim1Key(context, prefs);
+        String sim2Key = resolveSim2Key(context, prefs);
         return "HyperOS key: SIM1=" + emptyLabel(sim1Key) + ", SIM2=" + emptyLabel(sim2Key);
+    }
+
+    private static String resolveSim1Key(Context context, SharedPreferences prefs) {
+        String configured = prefs.getString(SIM1_KEY, "");
+        if (!isBlank(configured)) {
+            return configured;
+        }
+        return isXiaomiDevice() ? DEFAULT_SIM1_KEY : "";
+    }
+
+    private static String resolveSim2Key(Context context, SharedPreferences prefs) {
+        String configured = prefs.getString(SIM2_KEY, "");
+        if (!isBlank(configured)) {
+            return configured;
+        }
+        return isXiaomiDevice() ? DEFAULT_SIM2_KEY : "";
+    }
+
+    private static boolean isXiaomiDevice() {
+        String manufacturer = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
+        String brand = Build.BRAND == null ? "" : Build.BRAND.toLowerCase();
+        return manufacturer.contains("xiaomi") || brand.contains("xiaomi")
+                || brand.contains("redmi") || brand.contains("poco");
     }
 
     private static String emptyLabel(String value) {
