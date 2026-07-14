@@ -55,8 +55,11 @@ public final class MediaStoreRingtoneWriter {
             resolver.update(outputUri, publish, null, null);
         }
 
-        return new ImportedRingtone(outputUri, displayName, resolveExpectedPath(displayName),
-                bytesWritten);
+        String actualDisplayName = resolveOutputColumn(resolver, outputUri,
+                MediaStore.MediaColumns.DISPLAY_NAME, displayName);
+        String actualPath = resolveOutputColumn(resolver, outputUri, MediaStore.MediaColumns.DATA,
+                resolveExpectedPath(actualDisplayName));
+        return new ImportedRingtone(outputUri, actualDisplayName, actualPath, bytesWritten);
     }
 
     private long copy(ContentResolver resolver, Uri inputUri, Uri outputUri) throws IOException {
@@ -124,5 +127,22 @@ public final class MediaStoreRingtoneWriter {
     private String resolveExpectedPath(String displayName) {
         return Environment.getExternalStorageDirectory().getAbsolutePath()
                 + "/" + Environment.DIRECTORY_RINGTONES + "/" + displayName;
+    }
+
+    private String resolveOutputColumn(ContentResolver resolver, Uri outputUri, String column,
+            String fallback) {
+        try (Cursor cursor = resolver.query(outputUri, new String[]{column}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(column);
+                if (index >= 0) {
+                    String value = cursor.getString(index);
+                    if (value != null && !value.trim().isEmpty()) {
+                        return value;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return fallback;
     }
 }
