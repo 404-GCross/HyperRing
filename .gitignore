@@ -1,0 +1,11 @@
+.gradle/
+build/
+**/build/
+local.properties
+captures/
+.idea/
+*.iml
+
+# Local reference material, not part of HyperRing.
+/参考项目/
+/gradle/*.zip
