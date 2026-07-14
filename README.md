@@ -33,6 +33,16 @@ Debug APK 输出位置：
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## 签名
+
+Debug 包使用仓库内的统一测试 keystore：
+
+```text
+keystore/hyperring-debug.keystore
+```
+
+这个 keystore 只用于 Debug APK，方便本地和 GitHub Actions 构建出的安装包保持同一签名，避免测试时更新安装失败。正式发布包需要使用单独的私密 release keystore。
+
 ## 开源协议
 
 GNU General Public License v3.0。

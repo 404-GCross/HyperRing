@@ -13,4 +13,19 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/hyperring-debug.keystore")
+            storePassword = "hyperring"
+            keyAlias = "hyperring-debug"
+            keyPassword = "hyperring"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
 }
