@@ -34,23 +34,39 @@ final class HyperOsRingtoneSetter {
         }
 
         String value = ringtoneUri.toString();
-        try {
-            Settings.System.putInt(context.getContentResolver(), UNIFORM_KEY, 0);
-            if (target == SimTarget.SIM_1 || target == SimTarget.BOTH) {
-                Settings.System.putString(context.getContentResolver(), sim1Key, value);
-                Settings.System.putString(context.getContentResolver(), Settings.System.RINGTONE,
-                        value);
-                writeDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath);
-                writeDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath);
-            }
-            if (target == SimTarget.SIM_2 || target == SimTarget.BOTH) {
-                Settings.System.putString(context.getContentResolver(), sim2Key, value);
-                writeDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath);
-            }
-            return RingtoneApplyResult.success("已写入已校准的 HyperOS 双卡铃声 key。");
-        } catch (Exception e) {
-            return RingtoneApplyResult.failed("写入 HyperOS 私有 key 失败：" + e.getMessage());
+        WriteReport report = new WriteReport();
+        safePutInt(context, UNIFORM_KEY, 0, report, false);
+
+        boolean sim1Required = target == SimTarget.SIM_1 || target == SimTarget.BOTH;
+        boolean sim2Required = target == SimTarget.SIM_2 || target == SimTarget.BOTH;
+
+        if (sim1Required) {
+            safePutString(context, sim1Key, value, report, true);
+            safePutString(context, Settings.System.RINGTONE, value, report, false);
+            safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
+            safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
         }
+        if (sim2Required) {
+            safePutString(context, sim2Key, value, report, true);
+            safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
+        }
+
+        int requiredCount = 0;
+        if (sim1Required) {
+            requiredCount++;
+        }
+        if (sim2Required) {
+            requiredCount++;
+        }
+
+        if (report.requiredSuccesses >= requiredCount) {
+            String message = "已写入 HyperOS 双卡铃声主 key。";
+            if (report.hasWarnings()) {
+                message += "\n部分辅助 key 写入失败，不影响铃声主设置：\n" + report.warnings;
+            }
+            return RingtoneApplyResult.success(message);
+        }
+        return RingtoneApplyResult.failed("写入 HyperOS 铃声主 key 失败：\n" + report.warnings);
     }
 
     static void saveKeys(Context context, String sim1Key, String sim2Key) {
@@ -91,9 +107,53 @@ final class HyperOsRingtoneSetter {
                 || brand.contains("redmi") || brand.contains("poco");
     }
 
-    private static void writeDisplayPath(Context context, String key, String ringtonePath) {
+    private static void safeWriteDisplayPath(Context context, String key, String ringtonePath,
+            WriteReport report) {
         if (!isBlank(ringtonePath)) {
-            Settings.System.putString(context.getContentResolver(), key, ringtonePath);
+            safePutString(context, key, ringtonePath, report, false);
+        }
+    }
+
+    private static void safePutString(Context context, String key, String value, WriteReport report,
+            boolean required) {
+        try {
+            boolean ok = Settings.System.putString(context.getContentResolver(), key, value);
+            if (required && ok) {
+                report.requiredSuccesses++;
+            }
+            if (!ok) {
+                report.warn(key, "系统返回 false");
+            }
+        } catch (Exception e) {
+            report.warn(key, e.getMessage());
+        }
+    }
+
+    private static void safePutInt(Context context, String key, int value, WriteReport report,
+            boolean required) {
+        try {
+            boolean ok = Settings.System.putInt(context.getContentResolver(), key, value);
+            if (required && ok) {
+                report.requiredSuccesses++;
+            }
+            if (!ok) {
+                report.warn(key, "系统返回 false");
+            }
+        } catch (Exception e) {
+            report.warn(key, e.getMessage());
+        }
+    }
+
+    private static final class WriteReport {
+        private int requiredSuccesses;
+        private final StringBuilder warnings = new StringBuilder();
+
+        private void warn(String key, String message) {
+            warnings.append("- ").append(key).append(": ").append(message).append('\n');
+        }
+
+        private boolean hasWarnings() {
+            return warnings.length() > 0;
         }
     }
 
