@@ -152,9 +152,17 @@ public final class MediaStoreRingtoneWriter {
     private Uri canonicalize(ContentResolver resolver, Uri outputUri) {
         try {
             Uri canonicalUri = resolver.canonicalize(outputUri);
-            return canonicalUri == null ? outputUri : canonicalUri;
+            return withOwnerUser(canonicalUri == null ? outputUri : canonicalUri);
         } catch (Exception ignored) {
-            return outputUri;
+            return withOwnerUser(outputUri);
         }
+    }
+
+    private Uri withOwnerUser(Uri uri) {
+        String authority = uri.getAuthority();
+        if (authority == null || !authority.equals("media")) {
+            return uri;
+        }
+        return Uri.parse(uri.toString().replaceFirst("content://media/", "content://0@media/"));
     }
 }
