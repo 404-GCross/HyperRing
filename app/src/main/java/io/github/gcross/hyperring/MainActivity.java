@@ -2,6 +2,7 @@ package io.github.gcross.hyperring;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -48,6 +49,7 @@ public class MainActivity extends Activity {
     private RadioGroup targetGroup;
     private EditText sim1KeyText;
     private EditText sim2KeyText;
+    private AlertDialog progressDialog;
 
     private final MediaStoreRingtoneWriter ringtoneWriter = new MediaStoreRingtoneWriter();
     private final RingtoneApplyManager applyManager = new RingtoneApplyManager();
@@ -229,6 +231,7 @@ public class MainActivity extends Activity {
             return;
         }
         statusText.setText("正在导入...");
+        showProgressDialog();
         new Thread(() -> {
             try {
                 ImportedRingtone imported = ringtoneWriter.importAsRingtone(this, selectedAudioUri);
@@ -237,18 +240,61 @@ public class MainActivity extends Activity {
                 RingtoneApplyResult result = applyManager.apply(this, imported.getUri(),
                         imported.getAbsolutePath(), target);
                 runOnUiThread(() -> {
+                    dismissProgressDialog();
                     importedText.setText(imported.getDisplayName() + " / "
                             + formatBytes(imported.getBytesWritten()));
                     statusText.setText(result.getMessage());
                     refreshDiagnostics();
                     if (result.getStatus() == RingtoneApplyResult.Status.NEED_WRITE_SETTINGS_PERMISSION) {
-                        SettingsFallbackLauncher.openWriteSettings(this);
+                        showWriteSettingsDialog(result.getMessage());
+                    } else {
+                        showResultDialog("处理完成", result.getMessage());
                     }
                 });
             } catch (Exception e) {
-                runOnUiThread(() -> statusText.setText("导入失败：" + e.getMessage()));
+                runOnUiThread(() -> {
+                    dismissProgressDialog();
+                    String message = "导入失败：" + e.getMessage();
+                    statusText.setText(message);
+                    showResultDialog("处理失败", message);
+                });
             }
         }).start();
+    }
+
+    private void showProgressDialog() {
+        dismissProgressDialog();
+        progressDialog = new AlertDialog.Builder(this)
+                .setTitle("处理中")
+                .setMessage("正在导入音频并应用铃声...")
+                .setCancelable(false)
+                .create();
+        progressDialog.show();
+    }
+
+    private void dismissProgressDialog() {
+        if (progressDialog != null && progressDialog.isShowing()) {
+            progressDialog.dismiss();
+        }
+        progressDialog = null;
+    }
+
+    private void showResultDialog(String title, String message) {
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("知道了", null)
+                .show();
+    }
+
+    private void showWriteSettingsDialog(String message) {
+        new AlertDialog.Builder(this)
+                .setTitle("需要授权")
+                .setMessage(message)
+                .setPositiveButton("去授权",
+                        (dialog, which) -> SettingsFallbackLauncher.openWriteSettings(this))
+                .setNegativeButton("稍后", null)
+                .show();
     }
 
     private SimTarget currentTarget() {
