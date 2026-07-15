@@ -303,7 +303,13 @@ public class MainActivity extends Activity {
                 statusText.setText(result.getMessage());
                 refreshDiagnostics();
                 if (result.getStatus() == RingtoneApplyResult.Status.NEED_SHIZUKU_PERMISSION) {
-                    showShizukuDialog(result.getMessage());
+                    if (ShizukuShell.isConnected() && !ShizukuShell.isAuthorized()
+                            && !ShizukuShell.shouldShowRequestPermissionRationale()) {
+                        statusText.setText("正在请求 Shizuku 授权...");
+                        requestShizukuPermission();
+                    } else {
+                        showShizukuDialog(result.getMessage());
+                    }
                 } else {
                     String title = result.getStatus() == RingtoneApplyResult.Status.SUCCESS
                             ? "处理完成" : "处理失败";
@@ -359,12 +365,21 @@ public class MainActivity extends Activity {
     }
 
     private void requestShizukuPermission() {
+        if (ShizukuShell.isPreV11()) {
+            showResultDialog("Shizuku 不支持", "当前 Shizuku 版本过旧，无法使用现代授权流程。");
+            return;
+        }
         if (!ShizukuShell.isConnected()) {
             showResultDialog("Shizuku 未连接", "请先在设备上启动 Shizuku，然后再请求授权。");
             return;
         }
         if (ShizukuShell.isAuthorized()) {
             showResultDialog("Shizuku 已授权", "当前已经获得 Shizuku 授权。");
+            return;
+        }
+        if (ShizukuShell.shouldShowRequestPermissionRationale()) {
+            showResultDialog("需要重新授权",
+                    "Shizuku 之前已拒绝此权限。请到 Shizuku 中重新允许 HyperRing。");
             return;
         }
         try {

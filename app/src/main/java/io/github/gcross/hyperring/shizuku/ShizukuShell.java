@@ -28,6 +28,14 @@ public final class ShizukuShell {
         return isConnected() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED;
     }
 
+    public static boolean isPreV11() {
+        return Shizuku.isPreV11();
+    }
+
+    public static boolean shouldShowRequestPermissionRationale() {
+        return isConnected() && Shizuku.shouldShowRequestPermissionRationale();
+    }
+
     public static RingtoneApplyResult ensureReady(Context context) {
         if (!isConnected()) {
             return RingtoneApplyResult.needShizukuPermission(
@@ -54,6 +62,12 @@ public final class ShizukuShell {
         }
         StringBuilder builder = new StringBuilder("Shizuku: 已连接");
         builder.append(", ").append(isAuthorized() ? "已授权" : "未授权");
+        if (isPreV11()) {
+            builder.append(", pre-v11");
+        }
+        if (shouldShowRequestPermissionRationale()) {
+            builder.append(", 需要重新授权");
+        }
         int version = safeVersion();
         if (version > 0) {
             builder.append(", version=").append(version);
