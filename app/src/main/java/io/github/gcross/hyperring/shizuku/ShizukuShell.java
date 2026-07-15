@@ -49,11 +49,24 @@ public final class ShizukuShell {
     }
 
     public static CommandResult putSystemString(String key, String value) throws IOException {
-        return run("settings", "put", "system", key, value);
+        return putString("system", key, value);
+    }
+
+    public static CommandResult putSecureString(String key, String value) throws IOException {
+        return putString("secure", key, value);
     }
 
     public static CommandResult putSystemInt(String key, int value) throws IOException {
-        return run("settings", "put", "system", key, String.valueOf(value));
+        return putString("system", key, String.valueOf(value));
+    }
+
+    public static CommandResult putSecureInt(String key, int value) throws IOException {
+        return putString("secure", key, String.valueOf(value));
+    }
+
+    private static CommandResult putString(String namespace, String key, String value)
+            throws IOException {
+        return run("settings", "--user", "0", "put", namespace, key, value);
     }
 
     public static String describeStatus() {

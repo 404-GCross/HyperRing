@@ -112,7 +112,7 @@ final class HyperOsRingtoneSetter {
     private static void safeWriteDisplayPath(Context context, String key, String ringtonePath,
             WriteReport report) {
         if (!isBlank(ringtonePath)) {
-            safePutString(context, key, ringtonePath, report, false);
+            safePutDisplayString(context, key, ringtonePath, report);
         }
     }
 
@@ -129,6 +129,32 @@ final class HyperOsRingtoneSetter {
             }
         } catch (Exception e) {
             report.warn(key, e.getMessage());
+        }
+    }
+
+    private static void safePutDisplayString(Context context, String key, String value,
+            WriteReport report) {
+        ShizukuShell.CommandResult systemResult = null;
+        ShizukuShell.CommandResult secureResult = null;
+        Exception systemError = null;
+        Exception secureError = null;
+
+        try {
+            systemResult = ShizukuShell.putSystemString(key, value);
+        } catch (Exception e) {
+            systemError = e;
+        }
+        try {
+            secureResult = ShizukuShell.putSecureString(key, value);
+        } catch (Exception e) {
+            secureError = e;
+        }
+
+        boolean systemOk = systemResult != null && systemResult.isSuccess();
+        boolean secureOk = secureResult != null && secureResult.isSuccess();
+        if (!systemOk && !secureOk) {
+            report.warn(key, "system: " + describeWriteFailure(systemResult, systemError)
+                    + "; secure: " + describeWriteFailure(secureResult, secureError));
         }
     }
 
@@ -159,6 +185,13 @@ final class HyperOsRingtoneSetter {
         private boolean hasWarnings() {
             return warnings.length() > 0;
         }
+    }
+
+    private static String describeWriteFailure(ShizukuShell.CommandResult result, Exception error) {
+        if (result != null) {
+            return result.errorMessage();
+        }
+        return error == null ? "未执行" : error.getMessage();
     }
 
     private static String emptyLabel(String value) {

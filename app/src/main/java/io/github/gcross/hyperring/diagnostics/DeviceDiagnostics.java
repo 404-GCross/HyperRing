@@ -22,6 +22,9 @@ public final class DeviceDiagnostics {
             "ringtone_sim2",
             "ringtone_sound_slot_1",
             "ringtone_sound_slot_2",
+            "more_ringtone_value_call1",
+            "more_ringtone_value_call64",
+            "more_ringtone_value_call128",
             "miui_ringtone_sim1",
             "miui_ringtone_sim2"
     };
@@ -45,23 +48,34 @@ public final class DeviceDiagnostics {
             builder.append("- ").append(account).append('\n');
         }
 
-        builder.append("\nKnown setting keys\n");
+        builder.append("\nKnown system setting keys\n");
         for (String key : INTERESTING_SETTINGS) {
             builder.append(key).append(": ")
-                    .append(String.valueOf(Settings.System.getString(context.getContentResolver(), key)))
+                    .append(getSystemString(context, key))
+                    .append('\n');
+        }
+
+        builder.append("\nKnown secure setting keys\n");
+        for (String key : INTERESTING_SETTINGS) {
+            builder.append(key).append(": ")
+                    .append(getSecureString(context, key))
                     .append('\n');
         }
 
         builder.append("\nSystem keys containing ringtone\n");
-        appendRingtoneSettings(context, builder);
+        appendRingtoneSettings(context, builder, Settings.System.CONTENT_URI);
+
+        builder.append("\nSecure keys containing ringtone\n");
+        appendRingtoneSettings(context, builder, Settings.Secure.CONTENT_URI);
 
         builder.append("\n");
         builder.append(new RingtoneApplyManager().describeHyperOsKeys(context)).append('\n');
         return builder.toString();
     }
 
-    private static void appendRingtoneSettings(Context context, StringBuilder builder) {
-        try (Cursor cursor = context.getContentResolver().query(Settings.System.CONTENT_URI,
+    private static void appendRingtoneSettings(Context context, StringBuilder builder,
+            android.net.Uri settingsUri) {
+        try (Cursor cursor = context.getContentResolver().query(settingsUri,
                 new String[]{"name", "value"}, null, null, "name ASC")) {
             if (cursor == null) {
                 builder.append("Settings query returned null\n");
@@ -77,6 +91,22 @@ public final class DeviceDiagnostics {
             }
         } catch (Exception e) {
             builder.append("Cannot list settings: ").append(e.getMessage()).append('\n');
+        }
+    }
+
+    private static String getSystemString(Context context, String key) {
+        try {
+            return String.valueOf(Settings.System.getString(context.getContentResolver(), key));
+        } catch (Exception e) {
+            return "读取失败：" + e.getMessage();
+        }
+    }
+
+    private static String getSecureString(Context context, String key) {
+        try {
+            return String.valueOf(Settings.Secure.getString(context.getContentResolver(), key));
+        } catch (Exception e) {
+            return "读取失败：" + e.getMessage();
         }
     }
 }
