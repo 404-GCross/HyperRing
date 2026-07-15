@@ -45,16 +45,24 @@ final class HyperOsRingtoneSetter {
         boolean sim2Required = target == SimTarget.SIM_2 || target == SimTarget.BOTH;
 
         if (sim1Required) {
-            safePutString(context, sim1Key, value, report, true);
-            safePutString(context, SYSTEM_RINGTONE_KEY, value, report, false);
-            safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
-            safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
-            safeWriteDisplayPath(context, SIM1_MIUI_DISPLAY_KEY, ringtonePath, report);
+            boolean sim1Applied = safePutString(context, sim1Key, value, report, true);
+            if (sim1Applied) {
+                safePutString(context, SYSTEM_RINGTONE_KEY, value, report, false);
+                safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
+                safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
+                safeWriteDisplayPath(context, SIM1_MIUI_DISPLAY_KEY, ringtonePath, report);
+            } else {
+                report.warn("SIM1 display sync", "主铃声 key 未通过读回校验，已跳过显示缓存同步");
+            }
         }
         if (sim2Required) {
-            safePutString(context, sim2Key, value, report, true);
-            safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
-            safeWriteDisplayPath(context, SIM2_MIUI_DISPLAY_KEY, ringtonePath, report);
+            boolean sim2Applied = safePutString(context, sim2Key, value, report, true);
+            if (sim2Applied) {
+                safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
+                safeWriteDisplayPath(context, SIM2_MIUI_DISPLAY_KEY, ringtonePath, report);
+            } else {
+                report.warn("SIM2 display sync", "主铃声 key 未通过读回校验，已跳过显示缓存同步");
+            }
         }
 
         int requiredCount = 0;
@@ -120,19 +128,25 @@ final class HyperOsRingtoneSetter {
         }
     }
 
-    private static void safePutString(Context context, String key, String value, WriteReport report,
+    private static boolean safePutString(Context context, String key, String value, WriteReport report,
             boolean required) {
         try {
             ShizukuShell.CommandResult result = ShizukuShell.putSystemString(key, value);
-            boolean ok = result.isSuccess();
+            String actual = result.isSuccess() ? ShizukuShell.getSystemString(key) : "";
+            boolean ok = result.isSuccess() && value.equals(actual);
             if (required && ok) {
                 report.requiredSuccesses++;
             }
             if (!ok) {
-                report.warn(key, result.errorMessage());
+                String message = result.isSuccess()
+                        ? "读回值不一致，actual=" + actual
+                        : result.errorMessage();
+                report.warn(key, message);
             }
+            return ok;
         } catch (Exception e) {
             report.warn(key, e.getMessage());
+            return false;
         }
     }
 

@@ -64,9 +64,25 @@ public final class ShizukuShell {
         return putString("secure", key, String.valueOf(value));
     }
 
+    public static String getSystemString(String key) throws IOException {
+        return getString("system", key);
+    }
+
+    public static String getSecureString(String key) throws IOException {
+        return getString("secure", key);
+    }
+
     private static CommandResult putString(String namespace, String key, String value)
             throws IOException {
         return run("settings", "--user", "0", "put", namespace, key, value);
+    }
+
+    private static String getString(String namespace, String key) throws IOException {
+        CommandResult result = run("settings", "--user", "0", "get", namespace, key);
+        if (!result.isSuccess()) {
+            throw new IOException(result.errorMessage());
+        }
+        return result.getStdout();
     }
 
     public static String describeStatus() {
@@ -203,6 +219,10 @@ public final class ShizukuShell {
                 builder.append(command[i]);
             }
             return builder.toString();
+        }
+
+        public String getStdout() {
+            return stdout == null ? "" : stdout;
         }
     }
 }
