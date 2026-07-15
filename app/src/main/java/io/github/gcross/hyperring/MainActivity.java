@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -250,6 +251,10 @@ public class MainActivity extends Activity {
         refreshButton.setOnClickListener(v -> refreshDiagnostics());
         card.addView(refreshButton);
 
+        Button copyButton = secondaryButton("复制诊断");
+        copyButton.setOnClickListener(v -> copyDiagnostics());
+        card.addView(copyButton);
+
         diagnosticsText = bodyText("");
         diagnosticsText.setTextSize(12);
         diagnosticsText.setTypeface(Typeface.MONOSPACE);
@@ -427,6 +432,20 @@ public class MainActivity extends Activity {
             return;
         }
         diagnosticsText.setText(DeviceDiagnostics.collect(this));
+    }
+
+    private void copyDiagnostics() {
+        if (diagnosticsText == null) {
+            return;
+        }
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null) {
+            Toast.makeText(this, "无法访问剪贴板", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CharSequence text = diagnosticsText.getText();
+        clipboard.setPrimaryClip(ClipData.newPlainText("HyperRing 诊断", text));
+        Toast.makeText(this, "诊断内容已复制", Toast.LENGTH_SHORT).show();
     }
 
     private void addTargetButton(SimTarget target, boolean checked) {

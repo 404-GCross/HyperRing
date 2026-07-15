@@ -18,6 +18,8 @@ final class HyperOsRingtoneSetter {
     private static final String SIM1_DISPLAY_KEY = "more_ringtone_value_call64";
     private static final String SIM1_LEGACY_DISPLAY_KEY = "more_ringtone_value_call1";
     private static final String SIM2_DISPLAY_KEY = "more_ringtone_value_call128";
+    private static final String SIM1_MIUI_DISPLAY_KEY = "miui_ringtone_sim1";
+    private static final String SIM2_MIUI_DISPLAY_KEY = "miui_ringtone_sim2";
 
     private HyperOsRingtoneSetter() {
     }
@@ -47,10 +49,12 @@ final class HyperOsRingtoneSetter {
             safePutString(context, SYSTEM_RINGTONE_KEY, value, report, false);
             safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
             safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
+            safeWriteDisplayPath(context, SIM1_MIUI_DISPLAY_KEY, ringtonePath, report);
         }
         if (sim2Required) {
             safePutString(context, sim2Key, value, report, true);
             safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
+            safeWriteDisplayPath(context, SIM2_MIUI_DISPLAY_KEY, ringtonePath, report);
         }
 
         int requiredCount = 0;
