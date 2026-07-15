@@ -132,8 +132,8 @@ final class HyperOsRingtoneSetter {
 
     private static boolean safePutPrimaryString(Context context, String key, String value,
             WriteReport report, boolean required, boolean preferSecure) {
-        NamespaceWriteResult system = writeSystemString(key, value);
-        NamespaceWriteResult secure = writeSecureString(key, value);
+        NamespaceWriteResult system = writeSystemString(context, key, value);
+        NamespaceWriteResult secure = writeSecureString(context, key, value);
         NamespaceWriteResult preferred = preferSecure ? secure : system;
         boolean ok = value.equals(preferred.actual);
         if (required && ok) {
@@ -150,7 +150,7 @@ final class HyperOsRingtoneSetter {
 
     private static void safePutSystemString(Context context, String key, String value,
             WriteReport report) {
-        NamespaceWriteResult system = writeSystemString(key, value);
+        NamespaceWriteResult system = writeSystemString(context, key, value);
         if (!value.equals(system.actual)) {
             report.warn(key, "system={" + describeNamespaceWrite(system) + "}");
         }
@@ -158,8 +158,8 @@ final class HyperOsRingtoneSetter {
 
     private static void safePutDisplayString(Context context, String key, String value,
             WriteReport report) {
-        NamespaceWriteResult system = writeSystemString(key, value);
-        NamespaceWriteResult secure = writeSecureString(key, value);
+        NamespaceWriteResult system = writeSystemString(context, key, value);
+        NamespaceWriteResult secure = writeSecureString(context, key, value);
         if (!value.equals(system.actual) && !value.equals(secure.actual)) {
             report.warn(key, "system={" + describeNamespaceWrite(system)
                     + "}; secure={" + describeNamespaceWrite(secure) + "}");
@@ -169,8 +169,8 @@ final class HyperOsRingtoneSetter {
     private static void safePutInt(Context context, String key, int value, WriteReport report,
             boolean required) {
         String stringValue = String.valueOf(value);
-        NamespaceWriteResult system = writeSystemString(key, stringValue);
-        NamespaceWriteResult secure = writeSecureString(key, stringValue);
+        NamespaceWriteResult system = writeSystemString(context, key, stringValue);
+        NamespaceWriteResult secure = writeSecureString(context, key, stringValue);
         boolean ok = stringValue.equals(system.actual);
         if (required && ok) {
             report.requiredSuccesses++;
@@ -181,7 +181,8 @@ final class HyperOsRingtoneSetter {
         }
     }
 
-    private static NamespaceWriteResult writeSystemString(String key, String value) {
+    private static NamespaceWriteResult writeSystemString(Context context, String key,
+            String value) {
         NamespaceWriteResult result = new NamespaceWriteResult();
         try {
             result.callPut = ShizukuShell.callPutSystemString(key, value);
@@ -197,6 +198,11 @@ final class HyperOsRingtoneSetter {
             result.cmdPut = ShizukuShell.cmdPutSystemString(key, value);
         } catch (Exception e) {
             result.cmdPutError = e;
+        }
+        try {
+            result.servicePut = ShizukuShell.servicePutSystemString(context, key, value);
+        } catch (Exception e) {
+            result.servicePutError = e;
         }
         try {
             result.update = ShizukuShell.updateSystemString(key, value);
@@ -224,7 +230,8 @@ final class HyperOsRingtoneSetter {
         return result;
     }
 
-    private static NamespaceWriteResult writeSecureString(String key, String value) {
+    private static NamespaceWriteResult writeSecureString(Context context, String key,
+            String value) {
         NamespaceWriteResult result = new NamespaceWriteResult();
         try {
             result.callPut = ShizukuShell.callPutSecureString(key, value);
@@ -240,6 +247,11 @@ final class HyperOsRingtoneSetter {
             result.cmdPut = ShizukuShell.cmdPutSecureString(key, value);
         } catch (Exception e) {
             result.cmdPutError = e;
+        }
+        try {
+            result.servicePut = ShizukuShell.servicePutSecureString(context, key, value);
+        } catch (Exception e) {
+            result.servicePutError = e;
         }
         try {
             result.update = ShizukuShell.updateSecureString(key, value);
@@ -271,6 +283,8 @@ final class HyperOsRingtoneSetter {
         return "call=" + describeWriteFailure(result.callPut, result.callError)
                 + ", put=" + describeWriteFailure(result.put, result.putError)
                 + ", cmdPut=" + describeWriteFailure(result.cmdPut, result.cmdPutError)
+                + ", servicePut=" + describeWriteFailure(result.servicePut,
+                        result.servicePutError)
                 + ", update=" + describeWriteFailure(result.update, result.updateError)
                 + ", rebuild=" + describeWriteFailure(result.rebuild, result.rebuildError)
                 + ", actual=" + result.actual
@@ -285,11 +299,13 @@ final class HyperOsRingtoneSetter {
         private ShizukuShell.CommandResult callPut;
         private ShizukuShell.CommandResult put;
         private ShizukuShell.CommandResult cmdPut;
+        private ShizukuShell.CommandResult servicePut;
         private ShizukuShell.CommandResult update;
         private ShizukuShell.CommandResult rebuild;
         private Exception callError;
         private Exception putError;
         private Exception cmdPutError;
+        private Exception servicePutError;
         private Exception updateError;
         private Exception rebuildError;
         private Exception readError;

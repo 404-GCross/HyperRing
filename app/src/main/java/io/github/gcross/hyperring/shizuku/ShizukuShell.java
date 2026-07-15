@@ -1,8 +1,12 @@
 package io.github.gcross.hyperring.shizuku;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.IBinder;
+import android.os.Parcel;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,6 +14,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import io.github.gcross.hyperring.ringtone.RingtoneApplyResult;
 import rikka.shizuku.Shizuku;
@@ -62,6 +69,16 @@ public final class ShizukuShell {
 
     public static CommandResult cmdPutSecureString(String key, String value) throws IOException {
         return cmdPutString("secure", key, value);
+    }
+
+    public static CommandResult servicePutSystemString(Context context, String key, String value)
+            throws IOException {
+        return servicePutString(context, "system", key, value);
+    }
+
+    public static CommandResult servicePutSecureString(Context context, String key, String value)
+            throws IOException {
+        return servicePutString(context, "secure", key, value);
     }
 
     public static CommandResult putSystemInt(String key, int value) throws IOException {
@@ -136,6 +153,100 @@ public final class ShizukuShell {
     private static CommandResult cmdPutString(String namespace, String key, String value)
             throws IOException {
         return run("cmd", "settings", "put", "--user", "0", namespace, key, value);
+    }
+
+    private static CommandResult servicePutString(Context context, String namespace, String key,
+            String value) throws IOException {
+        if (!isAuthorized()) {
+            throw new IOException("Shizuku 未授权");
+        }
+
+        String[] command = new String[]{"shizuku-service", "put", namespace, key};
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<IBinder> binderRef = new AtomicReference<>();
+        AtomicReference<Exception> errorRef = new AtomicReference<>();
+        ComponentName componentName = new ComponentName(context.getPackageName(),
+                SettingsUserService.class.getName());
+        Shizuku.UserServiceArgs args = new Shizuku.UserServiceArgs(componentName)
+                .daemon(false)
+                .processNameSuffix("settings")
+                .debuggable(false)
+                .version(1);
+        ServiceConnection connection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                binderRef.set(service);
+                latch.countDown();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                latch.countDown();
+            }
+
+            @Override
+            public void onBindingDied(ComponentName name) {
+                errorRef.set(new IOException("Shizuku UserService 绑定已死亡"));
+                latch.countDown();
+            }
+
+            @Override
+            public void onNullBinding(ComponentName name) {
+                errorRef.set(new IOException("Shizuku UserService 返回空绑定"));
+                latch.countDown();
+            }
+        };
+
+        try {
+            Shizuku.bindUserService(args, connection);
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                return new CommandResult(command, 1, "", "等待 Shizuku UserService 超时");
+            }
+            Exception bindError = errorRef.get();
+            if (bindError != null) {
+                return new CommandResult(command, 1, "", bindError.getMessage());
+            }
+            IBinder binder = binderRef.get();
+            if (binder == null) {
+                return new CommandResult(command, 1, "", "未获得 Shizuku UserService Binder");
+            }
+            return transactPutSetting(command, binder, namespace, key, value);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("等待 Shizuku UserService 被中断", e);
+        } catch (Exception e) {
+            throw new IOException("调用 Shizuku UserService 失败：" + e.getMessage(), e);
+        } finally {
+            try {
+                Shizuku.unbindUserService(args, connection, true);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static CommandResult transactPutSetting(String[] command, IBinder binder,
+            String namespace, String key, String value) throws IOException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        try {
+            data.writeString(namespace);
+            data.writeString(key);
+            data.writeString(value);
+            boolean transacted = binder.transact(SettingsUserService.TRANSACTION_PUT_SETTING,
+                    data, reply, 0);
+            if (!transacted) {
+                return new CommandResult(command, 1, "", "Binder transact 返回 false");
+            }
+            reply.readException();
+            int exitCode = reply.readInt();
+            String message = reply.readString();
+            return new CommandResult(command, exitCode, message, "");
+        } catch (Exception e) {
+            throw new IOException("Shizuku UserService transact 失败：" + e.getMessage(), e);
+        } finally {
+            data.recycle();
+            reply.recycle();
+        }
     }
 
     private static CommandResult updateString(String namespace, String key, String value)
