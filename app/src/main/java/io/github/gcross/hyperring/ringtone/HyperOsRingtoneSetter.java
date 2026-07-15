@@ -58,7 +58,7 @@ final class HyperOsRingtoneSetter {
         }
         if (sim2Required) {
             boolean sim2Applied = safePutPrimaryString(context, sim2Key, value, report, true,
-                    true);
+                    false);
             if (sim2Applied) {
                 safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM2_MIUI_DISPLAY_KEY, ringtonePath, report);
@@ -203,6 +203,19 @@ final class HyperOsRingtoneSetter {
         } catch (Exception e) {
             result.readError = e;
         }
+        if (!value.equals(result.actual)) {
+            try {
+                result.rebuild = ShizukuShell.rebuildSystemString(key, value);
+            } catch (Exception e) {
+                result.rebuildError = e;
+            }
+            try {
+                result.actualAfterRebuild = ShizukuShell.getSystemString(key);
+                result.actual = result.actualAfterRebuild;
+            } catch (Exception e) {
+                result.readAfterRebuildError = e;
+            }
+        }
         return result;
     }
 
@@ -228,6 +241,19 @@ final class HyperOsRingtoneSetter {
         } catch (Exception e) {
             result.readError = e;
         }
+        if (!value.equals(result.actual)) {
+            try {
+                result.rebuild = ShizukuShell.rebuildSecureString(key, value);
+            } catch (Exception e) {
+                result.rebuildError = e;
+            }
+            try {
+                result.actualAfterRebuild = ShizukuShell.getSecureString(key);
+                result.actual = result.actualAfterRebuild;
+            } catch (Exception e) {
+                result.readAfterRebuildError = e;
+            }
+        }
         return result;
     }
 
@@ -235,19 +261,28 @@ final class HyperOsRingtoneSetter {
         return "call=" + describeWriteFailure(result.callPut, result.callError)
                 + ", put=" + describeWriteFailure(result.put, result.putError)
                 + ", update=" + describeWriteFailure(result.update, result.updateError)
+                + ", rebuild=" + describeWriteFailure(result.rebuild, result.rebuildError)
                 + ", actual=" + result.actual
-                + (result.readError == null ? "" : ", read=" + result.readError.getMessage());
+                + (result.actualAfterRebuild == null ? ""
+                        : ", actualAfterRebuild=" + result.actualAfterRebuild)
+                + (result.readError == null ? "" : ", read=" + result.readError.getMessage())
+                + (result.readAfterRebuildError == null ? ""
+                        : ", readAfterRebuild=" + result.readAfterRebuildError.getMessage());
     }
 
     private static final class NamespaceWriteResult {
         private ShizukuShell.CommandResult callPut;
         private ShizukuShell.CommandResult put;
         private ShizukuShell.CommandResult update;
+        private ShizukuShell.CommandResult rebuild;
         private Exception callError;
         private Exception putError;
         private Exception updateError;
+        private Exception rebuildError;
         private Exception readError;
+        private Exception readAfterRebuildError;
         private String actual;
+        private String actualAfterRebuild;
     }
 
     private static final class WriteReport {

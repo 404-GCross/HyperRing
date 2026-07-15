@@ -80,6 +80,14 @@ public final class ShizukuShell {
         return updateString("secure", key, value);
     }
 
+    public static CommandResult rebuildSystemString(String key, String value) throws IOException {
+        return rebuildString("system", key, value);
+    }
+
+    public static CommandResult rebuildSecureString(String key, String value) throws IOException {
+        return rebuildString("secure", key, value);
+    }
+
     public static CommandResult callPutSystemString(String key, String value) throws IOException {
         return callPutString("system", key, value);
     }
@@ -97,6 +105,16 @@ public final class ShizukuShell {
             throws IOException {
         return run("content", "update", "--uri", settingsUri(namespace), "--user", "0",
                 "--bind", "value:s:" + value, "--where", "name='" + escapeSql(key) + "'");
+    }
+
+    private static CommandResult rebuildString(String namespace, String key, String value)
+            throws IOException {
+        CommandResult delete = run("content", "delete", "--uri", settingsUri(namespace),
+                "--user", "0", "--where", "name='" + escapeSql(key) + "'");
+        CommandResult insert = run("content", "insert", "--uri", settingsUri(namespace),
+                "--user", "0", "--bind", "name:s:" + key, "--bind", "value:s:" + value);
+        return CommandResult.combine(new String[]{"content", "rebuild", namespace, key},
+                delete, insert);
     }
 
     private static CommandResult callPutString(String namespace, String key, String value)
@@ -229,6 +247,13 @@ public final class ShizukuShell {
             this.exitCode = exitCode;
             this.stdout = stdout;
             this.stderr = stderr;
+        }
+
+        static CommandResult combine(String[] command, CommandResult first, CommandResult second) {
+            String stdout = "delete: " + first.errorMessage() + "; insert: " + second.errorMessage();
+            return new CommandResult(command,
+                    first.isSuccess() && second.isSuccess() ? 0 : 1,
+                    stdout, "");
         }
 
         public boolean isSuccess() {
