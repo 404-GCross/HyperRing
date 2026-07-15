@@ -45,9 +45,9 @@ final class HyperOsRingtoneSetter {
         boolean sim2Required = target == SimTarget.SIM_2 || target == SimTarget.BOTH;
 
         if (sim1Required) {
-            boolean sim1Applied = safePutString(context, sim1Key, value, report, true);
+            boolean sim1Applied = safePutPrimaryString(context, sim1Key, value, report, true);
             if (sim1Applied) {
-                safePutString(context, SYSTEM_RINGTONE_KEY, value, report, false);
+                safePutPrimaryString(context, SYSTEM_RINGTONE_KEY, value, report, false);
                 safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM1_MIUI_DISPLAY_KEY, ringtonePath, report);
@@ -56,7 +56,7 @@ final class HyperOsRingtoneSetter {
             }
         }
         if (sim2Required) {
-            boolean sim2Applied = safePutString(context, sim2Key, value, report, true);
+            boolean sim2Applied = safePutPrimaryString(context, sim2Key, value, report, true);
             if (sim2Applied) {
                 safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM2_MIUI_DISPLAY_KEY, ringtonePath, report);
@@ -128,19 +128,22 @@ final class HyperOsRingtoneSetter {
         }
     }
 
-    private static boolean safePutString(Context context, String key, String value, WriteReport report,
-            boolean required) {
+    private static boolean safePutPrimaryString(Context context, String key, String value,
+            WriteReport report, boolean required) {
         try {
-            ShizukuShell.CommandResult result = ShizukuShell.putSystemString(key, value);
-            String actual = result.isSuccess() ? ShizukuShell.getSystemString(key) : "";
-            boolean ok = result.isSuccess() && value.equals(actual);
+            ShizukuShell.CommandResult systemResult = ShizukuShell.putSystemString(key, value);
+            ShizukuShell.CommandResult secureResult = ShizukuShell.putSecureString(key, value);
+            String systemActual = systemResult.isSuccess() ? ShizukuShell.getSystemString(key) : "";
+            String secureActual = secureResult.isSuccess() ? ShizukuShell.getSecureString(key) : "";
+            boolean ok = value.equals(systemActual) || value.equals(secureActual);
             if (required && ok) {
                 report.requiredSuccesses++;
             }
             if (!ok) {
-                String message = result.isSuccess()
-                        ? "读回值不一致，actual=" + actual
-                        : result.errorMessage();
+                String message = "system=" + describeWriteFailure(systemResult, null)
+                        + ", systemActual=" + systemActual
+                        + "; secure=" + describeWriteFailure(secureResult, null)
+                        + ", secureActual=" + secureActual;
                 report.warn(key, message);
             }
             return ok;
@@ -179,13 +182,20 @@ final class HyperOsRingtoneSetter {
     private static void safePutInt(Context context, String key, int value, WriteReport report,
             boolean required) {
         try {
-            ShizukuShell.CommandResult result = ShizukuShell.putSystemInt(key, value);
-            boolean ok = result.isSuccess();
+            ShizukuShell.CommandResult systemResult = ShizukuShell.putSystemInt(key, value);
+            ShizukuShell.CommandResult secureResult = ShizukuShell.putSecureInt(key, value);
+            String systemActual = systemResult.isSuccess() ? ShizukuShell.getSystemString(key) : "";
+            String secureActual = secureResult.isSuccess() ? ShizukuShell.getSecureString(key) : "";
+            boolean ok = String.valueOf(value).equals(systemActual)
+                    || String.valueOf(value).equals(secureActual);
             if (required && ok) {
                 report.requiredSuccesses++;
             }
             if (!ok) {
-                report.warn(key, result.errorMessage());
+                report.warn(key, "system=" + describeWriteFailure(systemResult, null)
+                        + ", systemActual=" + systemActual
+                        + "; secure=" + describeWriteFailure(secureResult, null)
+                        + ", secureActual=" + secureActual);
             }
         } catch (Exception e) {
             report.warn(key, e.getMessage());
