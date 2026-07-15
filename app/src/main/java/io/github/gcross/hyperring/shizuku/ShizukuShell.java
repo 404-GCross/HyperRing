@@ -73,26 +73,50 @@ public final class ShizukuShell {
     }
 
     public static CommandResult updateSystemString(String key, String value) throws IOException {
+        if (!canUseContentBinding(value)) {
+            return CommandResult.skipped(new String[]{"content", "update", "system", key},
+                    "content 命令的 --bind 不能可靠处理包含冒号的值");
+        }
         return updateString("system", key, value);
     }
 
     public static CommandResult updateSecureString(String key, String value) throws IOException {
+        if (!canUseContentBinding(value)) {
+            return CommandResult.skipped(new String[]{"content", "update", "secure", key},
+                    "content 命令的 --bind 不能可靠处理包含冒号的值");
+        }
         return updateString("secure", key, value);
     }
 
     public static CommandResult rebuildSystemString(String key, String value) throws IOException {
+        if (!canUseContentBinding(value)) {
+            return CommandResult.skipped(new String[]{"content", "rebuild", "system", key},
+                    "已跳过：value 包含冒号，避免 delete 成功但 insert 失败");
+        }
         return rebuildString("system", key, value);
     }
 
     public static CommandResult rebuildSecureString(String key, String value) throws IOException {
+        if (!canUseContentBinding(value)) {
+            return CommandResult.skipped(new String[]{"content", "rebuild", "secure", key},
+                    "已跳过：value 包含冒号，避免 delete 成功但 insert 失败");
+        }
         return rebuildString("secure", key, value);
     }
 
     public static CommandResult callPutSystemString(String key, String value) throws IOException {
+        if (!canUseContentBinding(value)) {
+            return CommandResult.skipped(new String[]{"content", "call", "system", key},
+                    "content 命令的 --extra 不能可靠处理包含冒号的值");
+        }
         return callPutString("system", key, value);
     }
 
     public static CommandResult callPutSecureString(String key, String value) throws IOException {
+        if (!canUseContentBinding(value)) {
+            return CommandResult.skipped(new String[]{"content", "call", "secure", key},
+                    "content 命令的 --extra 不能可靠处理包含冒号的值");
+        }
         return callPutString("secure", key, value);
     }
 
@@ -138,6 +162,10 @@ public final class ShizukuShell {
 
     private static String escapeSql(String value) {
         return value.replace("'", "''");
+    }
+
+    private static boolean canUseContentBinding(String value) {
+        return value == null || !value.contains(":");
     }
 
     public static String describeStatus() {
@@ -254,6 +282,10 @@ public final class ShizukuShell {
             return new CommandResult(command,
                     first.isSuccess() && second.isSuccess() ? 0 : 1,
                     stdout, "");
+        }
+
+        static CommandResult skipped(String[] command, String reason) {
+            return new CommandResult(command, 2, reason, "");
         }
 
         public boolean isSuccess() {
