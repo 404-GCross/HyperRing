@@ -240,7 +240,12 @@ public class MainActivity extends Activity {
         LinearLayout card = card();
         card.addView(sectionTitle("状态"));
         statusText = bodyText("准备就绪。");
+        statusText.setTextIsSelectable(true);
         card.addView(statusText);
+
+        Button copyButton = secondaryButton("复制状态");
+        copyButton.setOnClickListener(v -> copyStatus());
+        card.addView(copyButton);
         return card;
     }
 
@@ -438,14 +443,24 @@ public class MainActivity extends Activity {
         if (diagnosticsText == null) {
             return;
         }
+        copyTextToClipboard("HyperRing 诊断", diagnosticsText.getText(), "诊断内容已复制");
+    }
+
+    private void copyStatus() {
+        if (statusText == null) {
+            return;
+        }
+        copyTextToClipboard("HyperRing 状态", statusText.getText(), "状态已复制");
+    }
+
+    private void copyTextToClipboard(String label, CharSequence text, String successMessage) {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         if (clipboard == null) {
             Toast.makeText(this, "无法访问剪贴板", Toast.LENGTH_SHORT).show();
             return;
         }
-        CharSequence text = diagnosticsText.getText();
-        clipboard.setPrimaryClip(ClipData.newPlainText("HyperRing 诊断", text));
-        Toast.makeText(this, "诊断内容已复制", Toast.LENGTH_SHORT).show();
+        clipboard.setPrimaryClip(ClipData.newPlainText(label, text));
+        Toast.makeText(this, successMessage, Toast.LENGTH_SHORT).show();
     }
 
     private void addTargetButton(SimTarget target, boolean checked) {

@@ -72,9 +72,38 @@ public final class ShizukuShell {
         return getString("secure", key);
     }
 
+    public static CommandResult updateSystemString(String key, String value) throws IOException {
+        return updateString("system", key, value);
+    }
+
+    public static CommandResult updateSecureString(String key, String value) throws IOException {
+        return updateString("secure", key, value);
+    }
+
+    public static CommandResult callPutSystemString(String key, String value) throws IOException {
+        return callPutString("system", key, value);
+    }
+
+    public static CommandResult callPutSecureString(String key, String value) throws IOException {
+        return callPutString("secure", key, value);
+    }
+
     private static CommandResult putString(String namespace, String key, String value)
             throws IOException {
         return run("settings", "--user", "0", "put", namespace, key, value);
+    }
+
+    private static CommandResult updateString(String namespace, String key, String value)
+            throws IOException {
+        return run("content", "update", "--uri", settingsUri(namespace), "--user", "0",
+                "--bind", "value:s:" + value, "--where", "name='" + escapeSql(key) + "'");
+    }
+
+    private static CommandResult callPutString(String namespace, String key, String value)
+            throws IOException {
+        return run("content", "call", "--uri", settingsUri(namespace), "--user", "0",
+                "--method", "PUT_" + namespace, "--arg", key,
+                "--extra", "value:s:" + value, "--extra", "_user:i:0");
     }
 
     private static String getString(String namespace, String key) throws IOException {
@@ -83,6 +112,14 @@ public final class ShizukuShell {
             throw new IOException(result.errorMessage());
         }
         return result.getStdout();
+    }
+
+    private static String settingsUri(String namespace) {
+        return "content://settings/" + namespace;
+    }
+
+    private static String escapeSql(String value) {
+        return value.replace("'", "''");
     }
 
     public static String describeStatus() {

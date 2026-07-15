@@ -45,9 +45,10 @@ final class HyperOsRingtoneSetter {
         boolean sim2Required = target == SimTarget.SIM_2 || target == SimTarget.BOTH;
 
         if (sim1Required) {
-            boolean sim1Applied = safePutPrimaryString(context, sim1Key, value, report, true);
+            boolean sim1Applied = safePutPrimaryString(context, sim1Key, value, report, true,
+                    false);
             if (sim1Applied) {
-                safePutPrimaryString(context, SYSTEM_RINGTONE_KEY, value, report, false);
+                safePutSystemString(context, SYSTEM_RINGTONE_KEY, value, report);
                 safeWriteDisplayPath(context, SIM1_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM1_LEGACY_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM1_MIUI_DISPLAY_KEY, ringtonePath, report);
@@ -56,7 +57,8 @@ final class HyperOsRingtoneSetter {
             }
         }
         if (sim2Required) {
-            boolean sim2Applied = safePutPrimaryString(context, sim2Key, value, report, true);
+            boolean sim2Applied = safePutPrimaryString(context, sim2Key, value, report, true,
+                    true);
             if (sim2Applied) {
                 safeWriteDisplayPath(context, SIM2_DISPLAY_KEY, ringtonePath, report);
                 safeWriteDisplayPath(context, SIM2_MIUI_DISPLAY_KEY, ringtonePath, report);
@@ -129,78 +131,123 @@ final class HyperOsRingtoneSetter {
     }
 
     private static boolean safePutPrimaryString(Context context, String key, String value,
-            WriteReport report, boolean required) {
-        try {
-            ShizukuShell.CommandResult systemResult = ShizukuShell.putSystemString(key, value);
-            ShizukuShell.CommandResult secureResult = ShizukuShell.putSecureString(key, value);
-            String systemActual = systemResult.isSuccess() ? ShizukuShell.getSystemString(key) : "";
-            String secureActual = secureResult.isSuccess() ? ShizukuShell.getSecureString(key) : "";
-            boolean ok = value.equals(systemActual);
-            if (required && ok) {
-                report.requiredSuccesses++;
-            }
-            if (!ok) {
-                String message = "system=" + describeWriteFailure(systemResult, null)
-                        + ", systemActual=" + systemActual
-                        + "; secure=" + describeWriteFailure(secureResult, null)
-                        + ", secureActual=" + secureActual
-                        + "; 主铃声实际生效以 system 表为准";
-                report.warn(key, message);
-            }
-            return ok;
-        } catch (Exception e) {
-            report.warn(key, e.getMessage());
-            return false;
+            WriteReport report, boolean required, boolean preferSecure) {
+        NamespaceWriteResult system = writeSystemString(key, value);
+        NamespaceWriteResult secure = writeSecureString(key, value);
+        NamespaceWriteResult preferred = preferSecure ? secure : system;
+        boolean ok = value.equals(preferred.actual);
+        if (required && ok) {
+            report.requiredSuccesses++;
+        }
+        if (!ok) {
+            String preferredName = preferSecure ? "secure" : "system";
+            report.warn(key, "首选表=" + preferredName
+                    + ", system={" + describeNamespaceWrite(system) + "}"
+                    + ", secure={" + describeNamespaceWrite(secure) + "}");
+        }
+        return ok;
+    }
+
+    private static void safePutSystemString(Context context, String key, String value,
+            WriteReport report) {
+        NamespaceWriteResult system = writeSystemString(key, value);
+        if (!value.equals(system.actual)) {
+            report.warn(key, "system={" + describeNamespaceWrite(system) + "}");
         }
     }
 
     private static void safePutDisplayString(Context context, String key, String value,
             WriteReport report) {
-        ShizukuShell.CommandResult systemResult = null;
-        ShizukuShell.CommandResult secureResult = null;
-        Exception systemError = null;
-        Exception secureError = null;
-
-        try {
-            systemResult = ShizukuShell.putSystemString(key, value);
-        } catch (Exception e) {
-            systemError = e;
-        }
-        try {
-            secureResult = ShizukuShell.putSecureString(key, value);
-        } catch (Exception e) {
-            secureError = e;
-        }
-
-        boolean systemOk = systemResult != null && systemResult.isSuccess();
-        boolean secureOk = secureResult != null && secureResult.isSuccess();
-        if (!systemOk && !secureOk) {
-            report.warn(key, "system: " + describeWriteFailure(systemResult, systemError)
-                    + "; secure: " + describeWriteFailure(secureResult, secureError));
+        NamespaceWriteResult system = writeSystemString(key, value);
+        NamespaceWriteResult secure = writeSecureString(key, value);
+        if (!value.equals(system.actual) && !value.equals(secure.actual)) {
+            report.warn(key, "system={" + describeNamespaceWrite(system)
+                    + "}; secure={" + describeNamespaceWrite(secure) + "}");
         }
     }
 
     private static void safePutInt(Context context, String key, int value, WriteReport report,
             boolean required) {
-        try {
-            ShizukuShell.CommandResult systemResult = ShizukuShell.putSystemInt(key, value);
-            ShizukuShell.CommandResult secureResult = ShizukuShell.putSecureInt(key, value);
-            String systemActual = systemResult.isSuccess() ? ShizukuShell.getSystemString(key) : "";
-            String secureActual = secureResult.isSuccess() ? ShizukuShell.getSecureString(key) : "";
-            boolean ok = String.valueOf(value).equals(systemActual);
-            if (required && ok) {
-                report.requiredSuccesses++;
-            }
-            if (!ok) {
-                report.warn(key, "system=" + describeWriteFailure(systemResult, null)
-                        + ", systemActual=" + systemActual
-                        + "; secure=" + describeWriteFailure(secureResult, null)
-                        + ", secureActual=" + secureActual
-                        + "; 主设置实际生效以 system 表为准");
-            }
-        } catch (Exception e) {
-            report.warn(key, e.getMessage());
+        String stringValue = String.valueOf(value);
+        NamespaceWriteResult system = writeSystemString(key, stringValue);
+        NamespaceWriteResult secure = writeSecureString(key, stringValue);
+        boolean ok = stringValue.equals(system.actual);
+        if (required && ok) {
+            report.requiredSuccesses++;
         }
+        if (!ok) {
+            report.warn(key, "system={" + describeNamespaceWrite(system)
+                    + "}; secure={" + describeNamespaceWrite(secure) + "}");
+        }
+    }
+
+    private static NamespaceWriteResult writeSystemString(String key, String value) {
+        NamespaceWriteResult result = new NamespaceWriteResult();
+        try {
+            result.callPut = ShizukuShell.callPutSystemString(key, value);
+        } catch (Exception e) {
+            result.callError = e;
+        }
+        try {
+            result.put = ShizukuShell.putSystemString(key, value);
+        } catch (Exception e) {
+            result.putError = e;
+        }
+        try {
+            result.update = ShizukuShell.updateSystemString(key, value);
+        } catch (Exception e) {
+            result.updateError = e;
+        }
+        try {
+            result.actual = ShizukuShell.getSystemString(key);
+        } catch (Exception e) {
+            result.readError = e;
+        }
+        return result;
+    }
+
+    private static NamespaceWriteResult writeSecureString(String key, String value) {
+        NamespaceWriteResult result = new NamespaceWriteResult();
+        try {
+            result.callPut = ShizukuShell.callPutSecureString(key, value);
+        } catch (Exception e) {
+            result.callError = e;
+        }
+        try {
+            result.put = ShizukuShell.putSecureString(key, value);
+        } catch (Exception e) {
+            result.putError = e;
+        }
+        try {
+            result.update = ShizukuShell.updateSecureString(key, value);
+        } catch (Exception e) {
+            result.updateError = e;
+        }
+        try {
+            result.actual = ShizukuShell.getSecureString(key);
+        } catch (Exception e) {
+            result.readError = e;
+        }
+        return result;
+    }
+
+    private static String describeNamespaceWrite(NamespaceWriteResult result) {
+        return "call=" + describeWriteFailure(result.callPut, result.callError)
+                + ", put=" + describeWriteFailure(result.put, result.putError)
+                + ", update=" + describeWriteFailure(result.update, result.updateError)
+                + ", actual=" + result.actual
+                + (result.readError == null ? "" : ", read=" + result.readError.getMessage());
+    }
+
+    private static final class NamespaceWriteResult {
+        private ShizukuShell.CommandResult callPut;
+        private ShizukuShell.CommandResult put;
+        private ShizukuShell.CommandResult update;
+        private Exception callError;
+        private Exception putError;
+        private Exception updateError;
+        private Exception readError;
+        private String actual;
     }
 
     private static final class WriteReport {
