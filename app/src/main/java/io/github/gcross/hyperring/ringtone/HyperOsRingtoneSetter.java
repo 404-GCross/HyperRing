@@ -135,7 +135,7 @@ final class HyperOsRingtoneSetter {
             ShizukuShell.CommandResult secureResult = ShizukuShell.putSecureString(key, value);
             String systemActual = systemResult.isSuccess() ? ShizukuShell.getSystemString(key) : "";
             String secureActual = secureResult.isSuccess() ? ShizukuShell.getSecureString(key) : "";
-            boolean ok = value.equals(systemActual) || value.equals(secureActual);
+            boolean ok = value.equals(systemActual);
             if (required && ok) {
                 report.requiredSuccesses++;
             }
@@ -143,7 +143,8 @@ final class HyperOsRingtoneSetter {
                 String message = "system=" + describeWriteFailure(systemResult, null)
                         + ", systemActual=" + systemActual
                         + "; secure=" + describeWriteFailure(secureResult, null)
-                        + ", secureActual=" + secureActual;
+                        + ", secureActual=" + secureActual
+                        + "; 主铃声实际生效以 system 表为准";
                 report.warn(key, message);
             }
             return ok;
@@ -186,8 +187,7 @@ final class HyperOsRingtoneSetter {
             ShizukuShell.CommandResult secureResult = ShizukuShell.putSecureInt(key, value);
             String systemActual = systemResult.isSuccess() ? ShizukuShell.getSystemString(key) : "";
             String secureActual = secureResult.isSuccess() ? ShizukuShell.getSecureString(key) : "";
-            boolean ok = String.valueOf(value).equals(systemActual)
-                    || String.valueOf(value).equals(secureActual);
+            boolean ok = String.valueOf(value).equals(systemActual);
             if (required && ok) {
                 report.requiredSuccesses++;
             }
@@ -195,7 +195,8 @@ final class HyperOsRingtoneSetter {
                 report.warn(key, "system=" + describeWriteFailure(systemResult, null)
                         + ", systemActual=" + systemActual
                         + "; secure=" + describeWriteFailure(secureResult, null)
-                        + ", secureActual=" + secureActual);
+                        + ", secureActual=" + secureActual
+                        + "; 主设置实际生效以 system 表为准");
             }
         } catch (Exception e) {
             report.warn(key, e.getMessage());
