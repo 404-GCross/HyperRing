@@ -56,6 +56,14 @@ public final class ShizukuShell {
         return putString("secure", key, value);
     }
 
+    public static CommandResult cmdPutSystemString(String key, String value) throws IOException {
+        return cmdPutString("system", key, value);
+    }
+
+    public static CommandResult cmdPutSecureString(String key, String value) throws IOException {
+        return cmdPutString("secure", key, value);
+    }
+
     public static CommandResult putSystemInt(String key, int value) throws IOException {
         return putString("system", key, String.valueOf(value));
     }
@@ -123,6 +131,11 @@ public final class ShizukuShell {
     private static CommandResult putString(String namespace, String key, String value)
             throws IOException {
         return run("settings", "--user", "0", "put", namespace, key, value);
+    }
+
+    private static CommandResult cmdPutString(String namespace, String key, String value)
+            throws IOException {
+        return run("cmd", "settings", "put", "--user", "0", namespace, key, value);
     }
 
     private static CommandResult updateString(String namespace, String key, String value)

@@ -194,6 +194,11 @@ final class HyperOsRingtoneSetter {
             result.putError = e;
         }
         try {
+            result.cmdPut = ShizukuShell.cmdPutSystemString(key, value);
+        } catch (Exception e) {
+            result.cmdPutError = e;
+        }
+        try {
             result.update = ShizukuShell.updateSystemString(key, value);
         } catch (Exception e) {
             result.updateError = e;
@@ -232,6 +237,11 @@ final class HyperOsRingtoneSetter {
             result.putError = e;
         }
         try {
+            result.cmdPut = ShizukuShell.cmdPutSecureString(key, value);
+        } catch (Exception e) {
+            result.cmdPutError = e;
+        }
+        try {
             result.update = ShizukuShell.updateSecureString(key, value);
         } catch (Exception e) {
             result.updateError = e;
@@ -260,6 +270,7 @@ final class HyperOsRingtoneSetter {
     private static String describeNamespaceWrite(NamespaceWriteResult result) {
         return "call=" + describeWriteFailure(result.callPut, result.callError)
                 + ", put=" + describeWriteFailure(result.put, result.putError)
+                + ", cmdPut=" + describeWriteFailure(result.cmdPut, result.cmdPutError)
                 + ", update=" + describeWriteFailure(result.update, result.updateError)
                 + ", rebuild=" + describeWriteFailure(result.rebuild, result.rebuildError)
                 + ", actual=" + result.actual
@@ -273,10 +284,12 @@ final class HyperOsRingtoneSetter {
     private static final class NamespaceWriteResult {
         private ShizukuShell.CommandResult callPut;
         private ShizukuShell.CommandResult put;
+        private ShizukuShell.CommandResult cmdPut;
         private ShizukuShell.CommandResult update;
         private ShizukuShell.CommandResult rebuild;
         private Exception callError;
         private Exception putError;
+        private Exception cmdPutError;
         private Exception updateError;
         private Exception rebuildError;
         private Exception readError;
